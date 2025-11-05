@@ -1,0 +1,15 @@
+# Ignore preprocessed datasets
+preprocessed_datasets/
+
+# Ignore trained models
+trained_models/
+
+# Ignore pickle/scaler files
+pkl/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Mac system files
+.DS_Store
