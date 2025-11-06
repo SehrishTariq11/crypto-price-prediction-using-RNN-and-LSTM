@@ -24,8 +24,8 @@ st.title("📈 Crypto Price Prediction Dashboard")
 # -----------------------------
 # Paths for ZIP files
 # -----------------------------
-PREPROCESSED_ZIP = "preprocessed_datasets.zip"
-TRAINED_MODELS_ZIP = "trained_models.zip"
+PREPROCESSED_ZIP = "/content/preprocessed_datasets.zip"
+TRAINED_MODELS_ZIP = "/content/trained_models.zip"
 
 # -----------------------------
 # Unzip preprocessed datasets if folder does not exist
@@ -145,3 +145,4 @@ ax2.set_xlabel("Day")
 ax2.set_ylabel("Predicted Price")
 ax2.set_title(f"{selected_coin} 15-Day Forecast using {model_name}")
 st.pyplot(fig2)
+
