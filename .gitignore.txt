@@ -1,15 +1,6 @@
-# Ignore preprocessed datasets
-preprocessed_datasets/
-
-# Ignore trained models
-trained_models/
-
-# Ignore pickle/scaler files
-pkl/
-
-# Python cache
+# Ignore dataset and trained model ZIPs
+*.zip
+/preprocessed_datasets/
+ /trained_models/
 __pycache__/
 *.pyc
-
-# Mac system files
-.DS_Store
