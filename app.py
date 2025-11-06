@@ -10,13 +10,12 @@ from sklearn.preprocessing import MinMaxScaler
 st.set_page_config(page_title="📈 Crypto Price Prediction", layout="wide")
 
 # -----------------------------
-# Paths
+# Local paths
 # -----------------------------
-dataset_folder = "preprocessed_datasets"
 dataset_zip = "assets/preprocessed_datasets.zip"
-
-models_folder = "trained_models"
 models_zip = "assets/trained_models.zip"
+dataset_folder = "preprocessed_datasets"
+models_folder = "trained_models"
 
 # -----------------------------
 # Function to unzip if missing
@@ -25,6 +24,7 @@ def unzip_if_missing(zip_name, folder_name):
     if not os.path.exists(folder_name):
         with zipfile.ZipFile(zip_name, 'r') as zip_ref:
             zip_ref.extractall(folder_name)
+        st.write(f"📦 Unzipped {zip_name} into {folder_name}")
 
 unzip_if_missing(dataset_zip, dataset_folder)
 unzip_if_missing(models_zip, models_folder)
