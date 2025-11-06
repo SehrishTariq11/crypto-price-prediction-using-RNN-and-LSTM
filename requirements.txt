@@ -1,8 +1,8 @@
-numpy
+streamlit
+tensorflow
 pandas
+numpy
 scikit-learn
 matplotlib
-tensorflow
-streamlit
-joblib
-gdown
+kagglehub
+
