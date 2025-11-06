@@ -1,6 +1,0 @@
-# Ignore dataset and trained model ZIPs
-*.zip
-/preprocessed_datasets/
- /trained_models/
-__pycache__/
-*.pyc
