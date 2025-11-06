@@ -34,8 +34,22 @@ def setup_models():
         try:
             with zipfile.ZipFile(zip_file, "r") as zip_ref:
                 zip_ref.extractall(".")
-            st.success("✅ Models extracted successfully!")
-            return True
+
+            # Try to detect folder automatically
+            extracted_items = [f for f in os.listdir(".") if os.path.isdir(f)]
+            for folder in extracted_items:
+                if folder.lower().startswith("models_output"):
+                    if folder != models_dir:
+                        os.rename(folder, models_dir)
+                    break
+
+            if os.path.exists(models_dir):
+                st.success("✅ Models extracted successfully and ready!")
+                return True
+            else:
+                st.error("❌ Could not find 'models_output' folder after extraction. Please verify ZIP structure.")
+                return False
+
         except zipfile.BadZipFile:
             st.error("❌ Bad ZIP file — please make sure your Google Drive file is shared as 'Anyone with link'.")
             return False
@@ -43,9 +57,6 @@ def setup_models():
         st.error("❌ Could not find downloaded zip file.")
         return False
 
-
-if not setup_models():
-    st.stop()
 
 
 # ------------------------------------------------
@@ -131,3 +142,4 @@ if selected_coin:
             st.line_chart(pd.DataFrame(future_preds, columns=["Predicted Price"]))
         else:
             st.warning("LSTM model or scaler not available for this coin.")
+
