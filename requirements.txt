@@ -6,5 +6,5 @@ matplotlib
 scikit-learn
 joblib
 gdown
-
+kagglehub
 
