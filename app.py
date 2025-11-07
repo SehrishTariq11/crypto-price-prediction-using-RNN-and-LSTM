@@ -1,20 +1,3 @@
-Conversation opened. 1 read message.
-
-Skip to content
-Using Gmail with screen readers
-
-4 of 674
-(no subject)
-Inbox
-
-Esha ishaq
-Attachments
-Thu, Nov 6, 4:27 PM (1 day ago)
-to me
-
-
- One attachment
-  •  Scanned by Gmail
 import os
 import numpy as np
 import pandas as pd
@@ -154,3 +137,4 @@ with col2:
     st.pyplot(fig2)
 code.txt
 Displaying code.txt.
+
