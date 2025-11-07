@@ -1,97 +1,156 @@
-import streamlit as st
+Conversation opened. 1 read message.
+
+Skip to content
+Using Gmail with screen readers
+
+4 of 674
+(no subject)
+Inbox
+
+Esha ishaq
+Attachments
+Thu, Nov 6, 4:27 PM (1 day ago)
+to me
+
+
+ One attachment
+  •  Scanned by Gmail
 import os
-import zipfile
-import gdown
-import pandas as pd
-import tensorflow as tf
-import joblib
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit as st
+import kagglehub
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import SimpleRNN, LSTM, Dense
 
-# -----------------------------
-# CONFIG
-# -----------------------------
-ZIP_URL = "https://drive.google.com/uc?id=1Hz4UFpIbNdwhSJZlLUIxCIP4OMxnzKWJ"
-ZIP_PATH = "models_output.zip"
-MODELS_DIR = "models_output"
+# Streamlit Page Setup
+st.set_page_config(page_title="Crypto Price Prediction", page_icon="🪙", layout="wide")
 
-# -----------------------------
-# STEP 1: Download models if not exist
-# -----------------------------
-if not os.path.exists(MODELS_DIR):
-    st.write("⬇️ Downloading trained models from Google Drive... (~67MB)")
-    gdown.download(ZIP_URL, ZIP_PATH, quiet=False)
+st.title("🪙 Crypto Price Prediction using RNN + LSTM")
+st.write("Select any cryptocurrency to see its predicted prices using AI models (RNN + LSTM).")
 
-    with zipfile.ZipFile(ZIP_PATH, "r") as zip_ref:
-        zip_ref.extractall(".")
+# Load and Merge Dataset
 
-    # --- Auto-detect models folder ---
-    if not os.path.exists(MODELS_DIR):
-        for f in os.listdir("."):
-            path = os.path.join(".", f)
-            if os.path.isdir(path) and any(x in f.lower() for x in ["model", "output"]):
-                os.rename(path, MODELS_DIR)
-                st.info(f"📁 Found and renamed extracted folder '{f}' → '{MODELS_DIR}'")
-                break
+@st.cache_data
+def load_dataset():
+    path = kagglehub.dataset_download("tr1gg3rtrash/time-series-top-100-crypto-currency-dataset")
+    files = [f for f in os.listdir(path) if f.endswith(".csv")]
+    dfs = []
+    for f in files:
+        df = pd.read_csv(os.path.join(path, f))
+        df["Coin"] = f.split("-")[0]
+        dfs.append(df)
+    data = pd.concat(dfs, ignore_index=True)
+    data["timestamp"] = pd.to_datetime(data["timestamp"])
+    data.sort_values(["Coin", "timestamp"], inplace=True)
+    return data
 
-# Final check
-if not os.path.exists(MODELS_DIR):
-    st.error("❌ 'models_output' folder not found after extraction. Please check your Google Drive link or folder name inside zip.")
-    st.stop()
+data = load_dataset()
 
-st.success("✅ Models extracted successfully!")
+#Dropdown for Coin Selection
 
-# -----------------------------
-# STEP 2: Streamlit UI
-# -----------------------------
-st.title("📈 Crypto Price Prediction using RNN & LSTM")
+coins = sorted(data["Coin"].unique())
+coin_name = st.selectbox("Select a Coin", coins, index=0)
 
-coin_folders = [f for f in os.listdir(MODELS_DIR) if os.path.isdir(os.path.join(MODELS_DIR, f))]
+coin_data = data[data["Coin"] == coin_name][["timestamp", "close"]].dropna().copy()
+coin_data.set_index("timestamp", inplace=True)
+#  Data Preprocessing
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled_data = scaler.fit_transform(coin_data)
 
-if not coin_folders:
-    st.error("No coin model folders found inside models_output/")
-    st.stop()
+def create_sequences(dataset, time_step=60):
+    X, y = [], []
+    for i in range(len(dataset) - time_step - 1):
+        X.append(dataset[i:(i + time_step), 0])
+        y.append(dataset[i + time_step, 0])
+    return np.array(X), np.array(y)
 
-selected_coin = st.selectbox("Select a cryptocurrency:", coin_folders)
+time_step = 60
+X, y = create_sequences(scaled_data, time_step)
+X = X.reshape(X.shape[0], X.shape[1], 1)
+train_size = int(len(X) * 0.8)
+X_train, X_test = X[:train_size], X[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]
 
-coin_dir = os.path.join(MODELS_DIR, selected_coin)
-preds_path = os.path.join(coin_dir, f"{selected_coin}_predictions.csv")
+# Build RNN and LSTM Models
 
-if os.path.exists(preds_path):
-    preds = pd.read_csv(preds_path)
+def build_rnn():
+    model = Sequential([
+        SimpleRNN(50, return_sequences=True, input_shape=(time_step, 1)),
+        SimpleRNN(50),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
 
-    # --- Plot actual vs predicted ---
-    st.subheader(f"📊 Actual vs Predicted Prices for {selected_coin}")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(preds['actual'], label="Actual", color="black")
-    ax.plot(preds['rnn_pred'], label="RNN Prediction", linestyle="--")
-    ax.plot(preds['lstm_pred'], label="LSTM Prediction", linestyle=":")
-    ax.legend()
-    st.pyplot(fig)
+def build_lstm():
+    model = Sequential([
+        LSTM(50, return_sequences=True, input_shape=(time_step, 1)),
+        LSTM(50),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
 
-    # --- Load best model and predict next 15 days ---
-    meta = joblib.load(os.path.join(coin_dir, f"{selected_coin}_meta.pkl"))
-    scaler = joblib.load(meta['scaler_path'])
+# Train Both Models
 
-    model_path = os.path.join(coin_dir, f"{selected_coin}_lstm_best.h5")
-    if not os.path.exists(model_path):
-        model_path = os.path.join(coin_dir, f"{selected_coin}_rnn_best.h5")
+with st.spinner(f"Training RNN and LSTM models for {coin_name}..."):
+    rnn_model = build_rnn()
+    lstm_model = build_lstm()
 
-    model = tf.keras.models.load_model(model_path)
+    rnn_history = rnn_model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
+    lstm_history = lstm_model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
 
-    # Predict next 15 days
-    last_window = preds['actual'].values[-meta['window_size']:]
-    scaled_window = scaler.transform(last_window.reshape(-1, 1)).reshape(1, meta['window_size'], 1)
+# Compare model performance
+rnn_loss = rnn_history.history["loss"][-1]
+lstm_loss = lstm_history.history["loss"][-1]
 
-    preds_future = []
-    for _ in range(15):
-        pred = model.predict(scaled_window)[0][0]
-        preds_future.append(pred)
-        scaled_window = np.append(scaled_window[:, 1:, :], [[[pred]]], axis=1)
+best_model = rnn_model if rnn_loss < lstm_loss else lstm_model
+best_model_name = "RNN" if rnn_loss < lstm_loss else "LSTM"
 
-    preds_future = scaler.inverse_transform(np.array(preds_future).reshape(-1, 1)).flatten()
-    st.subheader("🔮 Next 15 Days Price Prediction")
-    st.line_chart(preds_future)
+st.success(f"{best_model_name} model selected based on better performance (lower loss).")
 
-else:
-    st.warning(f"No prediction file found for {selected_coin}.")
+#Predictions
+
+predicted = best_model.predict(X_test)
+predicted = scaler.inverse_transform(predicted.reshape(-1, 1))
+actual = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+# Future 30-Day Forecast
+
+future_input = scaled_data[-time_step:].reshape(1, time_step, 1)
+future_predictions = []
+
+for _ in range(30):
+    next_price = best_model.predict(future_input)[0, 0]
+    future_predictions.append(next_price)
+    future_input = np.append(future_input[:, 1:, :], [[[next_price]]], axis=1)
+
+future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+
+#Visualization
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader(f"{coin_name} Actual vs Predicted Prices ({best_model_name} Model)")
+    fig1, ax1 = plt.subplots(figsize=(8, 4))
+    ax1.plot(actual, label="Actual Price", color='green')
+    ax1.plot(predicted, label="Predicted Price", color='orange')
+    ax1.set_xlabel("Days")
+    ax1.set_ylabel("Price")
+    ax1.legend()
+    st.pyplot(fig1)
+
+with col2:
+    st.subheader(f"Next 30 Days Forecast for {coin_name}")
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
+    ax2.plot(range(1, 31), future_predictions, label="Predicted Future Price", color='red')
+    ax2.set_xlabel("Days Ahead")
+    ax2.set_ylabel("Predicted Price")
+    ax2.legend()
+    st.pyplot(fig2)
+code.txt
+Displaying code.txt.
